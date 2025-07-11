@@ -1,4 +1,4 @@
-import { XMLChangeDetector } from './change-detector';
+import { XMLChangeDetector } from './change-detector.js';
 
 // Parse command line arguments for resource names
 const args = process.argv.slice(2);

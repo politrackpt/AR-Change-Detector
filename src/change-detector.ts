@@ -126,18 +126,25 @@ class XMLChangeDetector {
         // Find all legislature folders (links containing "Pasta" and "Legislatura")
         const legislatureElements = await page.$$eval('a', (links: any[]) => 
             links.filter((link: any) => {
-                const text = link.textContent?.trim() || '';
+                const title = link.getAttribute('title') || '';
                 const href = link.getAttribute('href') || '';
-                // Match pattern: "Pasta <roman numeral> Legislatura"
-                return text.includes('Pasta') && text.includes('Legislatura') && href;
+
+                // Match titles like "Pasta XX Legislatura" where XX are uppercase letters
+                return /^Pasta [A-Z]+ Legislatura$/.test(title) && href;
             }).map((link: any) => ({
                 href: link.getAttribute('href') || '',
                 text: link.textContent?.trim() || '',
+                title: link.getAttribute('title') || '',
                 outerHTML: link.outerHTML
             }))
         );
         
         console.log(`Found ${legislatureElements.length} legislatures for resource ${resource.identifier}`);
+        
+        // Log each legislature for debugging
+        legislatureElements.forEach((element: any, index: number) => {
+            console.log(`  ${index + 1}. ${element.title || element.text} (${element.href})`);
+        });
         
         // Convert to Legislature objects
         const legislatures: Legislature[] = legislatureElements.map((element: any) => {
@@ -154,10 +161,13 @@ class XMLChangeDetector {
                 url = new URL(url, resource.url).toString();
             }
             
+            // Use title if available, otherwise use text content
+            const name = element.title || element.text;
+            
             return {
                 identifier,
                 url,
-                name: element.text,
+                name,
                 resourceIdentifier: resource.identifier
             };
         });
