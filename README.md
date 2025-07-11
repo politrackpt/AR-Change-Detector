@@ -1,34 +1,57 @@
 # 🔍 AR-Change-Detector
 
 > **Monitor XML files for changes using Playwright** 🎭  
-> Designed for AR's open data - triggers retrieval when resources update
+> Designed for Portuguese Parliament's open data - triggers retrieval when resources update
 
 ## ✨ Features
 
 - 🔄 **Smart Detection** - SHA256 hashing for efficient change detection
 - 💾 **Space Efficient** - Only stores hash, not XML files
-- 🌐 **URL Handling** - Supports relative and absolute URLs
+- 🌐 **Multi-level Discovery** - Discovers Resources → Legislatures → XML files
 - 🛡️ **Error Resilient** - Handles network issues gracefully
 - 📁 **Configurable** - Custom data directory support
+- 🎯 **Selective Monitoring** - Monitor specific resources via CLI
 
 ## 🚀 Quick Start
 
 ```bash
 npm install
-npm run run
+npm run cli                          # Monitor all resources
+npm run cli -- Deputados Sessoes    # Monitor specific resources
 ```
 
 ## 📖 Usage
 
+### CLI Usage
+```bash
+# Monitor all resources
+npm run cli
+
+# Monitor specific resources (resource names from URL paths)
+npm run cli -- Deputados Sessoes Iniciativas
+
+# Examples of resource names:
+# - Deputados (from /Cidadania/Paginas/DADeputados.aspx)
+# - Sessoes (from /Cidadania/Paginas/DASessoes.aspx)
+# - Iniciativas (from /Cidadania/Paginas/DAIniciativas.aspx)
+```
+
+### Programmatic Usage
 ```typescript
 import { XMLChangeDetector } from './src/change-detector';
 
-const detector = new XMLChangeDetector("https://example.com/data-page");
-const result = await detector.detectChanges('a[title="data.xml"]');
+// Monitor all resources
+const detector = new XMLChangeDetector(
+    "https://www.parlamento.pt/Cidadania/paginas/dadosabertos.aspx"
+);
 
-if (result.hasChanged) {
-    console.log('🔄 XML file changed!', result.currentHash);
-}
+// Monitor specific resources
+const detector = new XMLChangeDetector(
+    "https://www.parlamento.pt/Cidadania/paginas/dadosabertos.aspx",
+    ["Deputados", "Sessoes"]  // Resource names
+);
+
+const results = await detector.detectAllChanges();
 ```
 
 ## 🧪 Testing
@@ -44,32 +67,39 @@ npm run test:coverage   # With coverage
 
 ## 🔧 API
 
-### `XMLChangeDetector(baseUrl, dataDir?)`
+### `XMLChangeDetector(baseUrl, resourceNames?, dataDir?)`
 - `baseUrl` - Webpage containing XML links
+- `resourceNames` - Array of resource names to monitor (optional, monitors all if empty)
 - `dataDir` - Hash storage directory (default: `./data`)
 
-### `detectChanges(selector)`
-Returns `ChangeDetectionResult`:
+### `detectAllChanges()`
+Returns `XMLFileChangeResult[]`:
 ```typescript
 {
-    hasChanged: boolean;
-    currentHash: string;
-    previousHash?: string;
-    timestamp: string;
-}
+    xmlFile: XMLFile;
+    changeResult: ChangeDetectionResult;
+}[]
 ```
+
+### Resource Name Extraction
+Resource names are extracted from URLs with pattern `/Cidadania/Paginas/DA<name>.aspx`:
+- `DADeputados.aspx` → `Deputados`
+- `DASessoes.aspx` → `Sessoes`
+- `DAIniciativas.aspx` → `Iniciativas`
 
 ## 🔄 How It Works
 
-1. 🌐 Navigate to webpage
-2. 🎯 Find XML link with CSS selector
-3. 📥 Download XML content
-4. 🔒 Generate SHA256 hash
-5. 🔍 Compare with stored hash
-6. 💾 Update if changed
+1. 🌐 Navigate to Portuguese Parliament open data page
+2. 🎯 Discover resources (optionally filtered by provided names)
+3. 📁 For each resource, discover legislatures
+4. 📂 For each legislature, discover XML files
+5. 📥 Download XML content for each file
+6. 🔒 Generate SHA256 hash
+7. 🔍 Compare with stored hash
+8. 💾 Update if changed
 
 > [!TIP]
-> Uses Playwright for reliable web automation and only stores hashes to save disk space
+> Uses single browser instance for performance and only stores hashes to save disk space
 
 ## 📦 Dependencies
 

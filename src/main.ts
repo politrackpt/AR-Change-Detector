@@ -1,23 +1,48 @@
 import { XMLChangeDetector } from './change-detector';
 
-// Run every 5 minutes
+// Parse command line arguments for resource names
+const args = process.argv.slice(2);
+const resourceNames = args.length > 0 ? args : [];
+
+// Run change detection for specified resources (or all if none specified)
 (async () => {
-    console.log('Running change detection...');
+    if (resourceNames.length > 0) {
+        console.log(`🔍 Starting change detection for resources: ${resourceNames.join(', ')}`);
+    } else {
+        console.log('🔍 Starting change detection for all resources...');
+    }
+    
     const detector = new XMLChangeDetector(
-        "https://www.parlamento.pt/Cidadania/Paginas/DAIniciativas.aspx?t=57465a4a5353424d5a576470633278686448567959513d3d&Path=y%2ftQ6TCTFve9MRes1iKK%2buTB6TunZPTlZnwhr7HZ5lE3rZkrQVOtKdda0ZlGqNp42eXXE3M3nW1ye4Lq4dsVJIeGR5LR%2f3XIssV6OIULrFOLf0pw1vOTl3xmkG8CZReRbsdo41ukaRCjavLf5CDBS35L5zoS%2fSjb6IkGmhIAfBVRtagMz1kKQ6o5bqyHclWwVRL3U7oWe7gV4Dt8tu3CqtL2sjggTsMfjQLa4RpbVynAgzueC1y4FOkvBK4rqAaW4MszqL6YidLMdbVJk7XJoywwIpZNzEW%2bF4rOLxZK6OHQM9Y%2fwQJNZYk%2b0ZRGqYeaG%2fd%2fS9wnTiAeVVBg6wFV%2bA%3d%3d"
+        "https://www.parlamento.pt/Cidadania/paginas/dadosabertos.aspx",
+        resourceNames
     );
     
     try {
-        const result = await detector.detectChanges('a[title*=".xml"]');
+        // Detect changes for specified resources
+        const results = await detector.detectAllChanges();
         
-        if (result.hasChanged) {
-            console.log('📧 Sending notification...');
+        const changedResources = results.filter(r => r.changeResult.hasChanged);
+        
+        if (changedResources.length > 0) {
+            console.log(`🔄 Found ${changedResources.length} changed XML files:`);
+            
+            changedResources.forEach(result => {
+                console.log(`  - ${result.xmlFile.filename} (${result.xmlFile.identifier})`);
+                console.log(`    URL: ${result.xmlFile.url}`);
+                console.log(`    Hash: ${result.changeResult.currentHash.substring(0, 12)}...`);
+                console.log(`    Legislature: ${result.xmlFile.legislatureIdentifier}`);
+                console.log(`    Resource: ${result.xmlFile.resourceIdentifier}`);
+            });
+            
+            console.log('📧 Sending notifications...');
             // Add your notification logic here (email, webhook, etc.)
+        } else {
+            console.log('✅ No changes detected in any XML files.');
         }
-        else {
-            console.log('No changes detected.');
-        }
+        
+        console.log(`📊 Total XML files checked: ${results.length}`);
+        
     } catch (error) {
-        console.error('Monitoring error:', error);
+        console.error('❌ Monitoring error:', error);
     }
-})(); // 5 minutes
+})();

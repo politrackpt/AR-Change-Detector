@@ -3,6 +3,28 @@ import * as fs from 'fs';
 import * as crypto from 'crypto';
 import * as path from 'path';
 
+interface Resource {
+    identifier: string;
+    url: string;
+    title: string;
+    text: string;
+}
+
+interface Legislature {
+    identifier: string;
+    url: string;
+    name: string; // e.g., "Pasta XVII Legislatura"
+    resourceIdentifier: string; // Parent resource identifier
+}
+
+interface XMLFile {
+    identifier: string;
+    url: string;
+    filename: string;
+    legislatureIdentifier: string;
+    resourceIdentifier: string;
+}
+
 interface ChangeDetectionResult {
     hasChanged: boolean;
     currentHash: string;
@@ -10,12 +32,19 @@ interface ChangeDetectionResult {
     timestamp: string;
 }
 
+interface XMLFileChangeResult {
+    xmlFile: XMLFile;
+    changeResult: ChangeDetectionResult;
+}
+
 class XMLChangeDetector {
     private baseUrl: string;
     private dataDir: string;
+    private resourceNames: string[];
 
-    constructor(baseUrl: string, dataDir: string = './data') {
+    constructor(baseUrl: string, resourceNames: string[] = [], dataDir: string = './data') {
         this.baseUrl = baseUrl;
+        this.resourceNames = resourceNames;
         this.dataDir = dataDir;
         
         // Create data directory if it doesn't exist
@@ -24,83 +53,257 @@ class XMLChangeDetector {
         }
     }
 
-    async detectChanges(xmlSelector: string): Promise<ChangeDetectionResult> {
+    /**
+     * Discovers all resources on the page
+     */
+    private async discoverResources(page: any): Promise<Resource[]> {
+        await page.goto(this.baseUrl, { waitUntil: 'networkidle' });
+        
+        console.log('Discovering resources on:', await page.title());
+        
+        // Find all resource links
+        const resourceElements = await page.$$eval('a[title="Recursos"]', (links: any[]) => 
+            links.map((link: any) => ({
+                href: link.getAttribute('href') || '',
+                title: link.getAttribute('title') || '',
+                text: link.textContent?.trim() || '',
+                outerHTML: link.outerHTML
+            }))
+        );
+        
+        console.log(`Found ${resourceElements.length} resources`);
+        
+        // Convert to Resource objects
+        const resources: Resource[] = resourceElements.map((element: any) => {
+            // Generate identifier from HTML element hash
+            const identifier = crypto
+                .createHash('sha256')
+                .update(element.outerHTML)
+                .digest('hex')
+                .substring(0, 12); // Use first 12 chars for shorter identifier
+            
+            // Handle relative URLs
+            let url = element.href;
+            if (url && !url.startsWith('http')) {
+                url = new URL(url, this.baseUrl).toString();
+            }
+            
+            return {
+                identifier,
+                url,
+                title: element.title,
+                text: element.text
+            };
+        });
+        
+        // Filter resources based on provided resource names if list is not empty
+        const filteredResources = this.resourceNames.length > 0 
+            ? resources.filter(resource => {
+                // Extract resource name from URL path like "/Cidadania/Paginas/DA<name>.aspx"
+                const urlPath = resource.url.split('/').pop() || '';
+                const match = urlPath.match(/^DA(.+)\.aspx$/);
+                if (match) {
+                    const resourceName = match[1];
+                    return this.resourceNames.includes(resourceName);
+                }
+                return false;
+            })
+            : resources;
+        
+        console.log(`Filtered to ${filteredResources.length} resources based on provided names`);
+        
+        return filteredResources;
+    }
+
+    /**
+     * Discovers all legislatures for a specific resource
+     */
+    private async discoverLegislatures(page: any, resource: Resource): Promise<Legislature[]> {
+        await page.goto(resource.url, { waitUntil: 'networkidle' });
+        
+        console.log(`Discovering legislatures for resource: ${resource.text}`);
+        
+        // Find all legislature folders (links containing "Pasta" and "Legislatura")
+        const legislatureElements = await page.$$eval('a', (links: any[]) => 
+            links.filter((link: any) => {
+                const text = link.textContent?.trim() || '';
+                const href = link.getAttribute('href') || '';
+                // Match pattern: "Pasta <roman numeral> Legislatura"
+                return text.includes('Pasta') && text.includes('Legislatura') && href;
+            }).map((link: any) => ({
+                href: link.getAttribute('href') || '',
+                text: link.textContent?.trim() || '',
+                outerHTML: link.outerHTML
+            }))
+        );
+        
+        console.log(`Found ${legislatureElements.length} legislatures for resource ${resource.identifier}`);
+        
+        // Convert to Legislature objects
+        const legislatures: Legislature[] = legislatureElements.map((element: any) => {
+            // Generate identifier from HTML element hash
+            const identifier = crypto
+                .createHash('sha256')
+                .update(element.outerHTML)
+                .digest('hex')
+                .substring(0, 12);
+            
+            // Handle relative URLs
+            let url = element.href;
+            if (url && !url.startsWith('http')) {
+                url = new URL(url, resource.url).toString();
+            }
+            
+            return {
+                identifier,
+                url,
+                name: element.text,
+                resourceIdentifier: resource.identifier
+            };
+        });
+        
+        return legislatures;
+    }
+
+    /**
+     * Discovers all XML files for a specific legislature
+     */
+    private async discoverXMLFiles(page: any, legislature: Legislature): Promise<XMLFile[]> {
+        await page.goto(legislature.url, { waitUntil: 'networkidle' });
+        
+        console.log(`Discovering XML files for legislature: ${legislature.name}`);
+        
+        // Find all XML file links
+        const xmlElements = await page.$$eval('a', (links: any[]) => 
+            links.filter((link: any) => {
+                const href = link.getAttribute('href') || '';
+                const title = link.getAttribute('title') || '';
+                return href.includes('.xml') || title.includes('.xml');
+            }).map((link: any) => ({
+                href: link.getAttribute('href') || '',
+                title: link.getAttribute('title') || '',
+                text: link.textContent?.trim() || '',
+                outerHTML: link.outerHTML
+            }))
+        );
+        
+        console.log(`Found ${xmlElements.length} XML files for legislature ${legislature.identifier}`);
+        
+        // Convert to XMLFile objects
+        const xmlFiles: XMLFile[] = xmlElements.map((element: any) => {
+            // Generate identifier from HTML element hash
+            const identifier = crypto
+                .createHash('sha256')
+                .update(element.outerHTML)
+                .digest('hex')
+                .substring(0, 12);
+            
+            // Handle relative URLs
+            let url = element.href;
+            if (url && !url.startsWith('http')) {
+                url = new URL(url, legislature.url).toString();
+            }
+            
+            // Extract filename from URL or use title/text
+            const filename = element.title || element.text || url.split('/').pop() || 'unknown.xml';
+            
+            return {
+                identifier,
+                url,
+                filename,
+                legislatureIdentifier: legislature.identifier,
+                resourceIdentifier: legislature.resourceIdentifier
+            };
+        });
+        
+        return xmlFiles;
+    }
+
+    /**
+     * Detects changes for a specific XML file
+     */
+    private async detectXMLFileChanges(page: any, xmlFile: XMLFile): Promise<ChangeDetectionResult> {
+        console.log(`Checking XML file: ${xmlFile.filename} (${xmlFile.identifier})`);
+        
+        // Download XML content
+        const response = await page.goto(xmlFile.url);
+        const content = await response?.text();
+        
+        if (!content) {
+            throw new Error(`Failed to download XML content from ${xmlFile.url}`);
+        }
+
+        // Generate hash
+        const currentHash = crypto.createHash('sha256').update(content).digest('hex');
+        const hashFile = path.join(this.dataDir, `${xmlFile.identifier}_hash.txt`);
+        
+        // Check for changes
+        let previousHash: string | undefined;
+        let hasChanged = true;
+        
+        if (fs.existsSync(hashFile)) {
+            previousHash = fs.readFileSync(hashFile, 'utf8').trim();
+            hasChanged = currentHash !== previousHash;
+        }
+        
+        // Save if changed
+        if (hasChanged) {
+            fs.writeFileSync(hashFile, currentHash);
+            console.log(`✅ XML file ${xmlFile.filename} changed`);
+        } else {
+            console.log(`✅ XML file ${xmlFile.filename} unchanged`);
+        }
+        
+        return {
+            hasChanged,
+            currentHash,
+            previousHash,
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    /**
+     * Detects changes for all XML files across all resources and legislatures
+     */
+    async detectAllChanges(): Promise<XMLFileChangeResult[]> {
         const browser = await firefox.launch();
         const page = await browser.newPage();
         
         try {
-            await page.goto(this.baseUrl, { waitUntil: 'networkidle' });
+            const resources = await this.discoverResources(page);
+            const results: XMLFileChangeResult[] = [];
             
-            console.log('Navigated to:', await page.title());
-
-            await page.waitForTimeout(2000); // Wait for 2 seconds to ensure the page is fully loaded
-
-            // Debug: Try to find any XML-related links
-            const xmlLinks = await page.$$eval('a', links => 
-                links.filter(link => {
-                    const title = link.getAttribute('title') || '';
-                    const href = link.getAttribute('href') || '';
-                    return title.includes('xml') || href.includes('xml');
-                }).map(link => ({
-                    title: link.getAttribute('title'),
-                    href: link.getAttribute('href'),
-                    text: link.textContent?.trim()
-                }))
-            );
-            console.log('XML-related links:', xmlLinks);
-            
-            // Find the XML link
-            const xmlLink = page.locator(xmlSelector).first();
-            const elementCount = await page.locator(xmlSelector).count();
-            console.log(`Found ${elementCount} elements matching selector: ${xmlSelector}`);
-
-            if (elementCount === 0) {
-                throw new Error(`No elements found with selector: ${xmlSelector}`);
-            }
-
-            let xmlUrl = await xmlLink.getAttribute('href');
-            
-            // Handle relative URLs
-            if (xmlUrl && !xmlUrl.startsWith('http')) {
-                xmlUrl = new URL(xmlUrl, this.baseUrl).toString();
+            for (const resource of resources) {
+                try {
+                    console.log(`\n📁 Processing resource: ${resource.text}`);
+                    const legislatures = await this.discoverLegislatures(page, resource);
+                    
+                    for (const legislature of legislatures) {
+                        try {
+                            console.log(`\n📂 Processing legislature: ${legislature.name}`);
+                            const xmlFiles = await this.discoverXMLFiles(page, legislature);
+                            
+                            for (const xmlFile of xmlFiles) {
+                                try {
+                                    const changeResult = await this.detectXMLFileChanges(page, xmlFile);
+                                    results.push({
+                                        xmlFile,
+                                        changeResult
+                                    });
+                                } catch (error) {
+                                    console.error(`Error checking XML file ${xmlFile.filename}:`, error);
+                                }
+                            }
+                        } catch (error) {
+                            console.error(`Error checking legislature ${legislature.name}:`, error);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error checking resource ${resource.text}:`, error);
+                }
             }
             
-            if (!xmlUrl) {
-                throw new Error('XML link not found');
-            }
-            
-            // Download XML content
-            const response = await page.goto(xmlUrl);
-            const xmlContent = await response?.text();
-            
-            if (!xmlContent) {
-                throw new Error('Failed to download XML content');
-            }
-
-            // Generate hash
-            const currentHash = crypto.createHash('sha256').update(xmlContent).digest('hex');
-            const hashFile = path.join(this.dataDir, 'xml_hash.txt');
-            
-            // Check for changes
-            let previousHash: string | undefined;
-            let hasChanged = true;
-            
-            if (fs.existsSync(hashFile)) {
-                previousHash = fs.readFileSync(hashFile, 'utf8').trim();
-                hasChanged = currentHash !== previousHash;
-            }
-            
-            // Save if changed
-            if (hasChanged) {
-                fs.writeFileSync(hashFile, currentHash);
-            }
-            
-            return {
-                hasChanged,
-                currentHash,
-                previousHash,
-                timestamp: new Date().toISOString()
-            };
+            return results;
             
         } finally {
             await browser.close();
@@ -108,5 +311,5 @@ class XMLChangeDetector {
     }
 }
 
-// Export the class for external use
-export { XMLChangeDetector, ChangeDetectionResult };
+// Export the class and interfaces for external use
+export { XMLChangeDetector, ChangeDetectionResult, Resource, Legislature, XMLFile, XMLFileChangeResult };
