@@ -1,6 +1,0 @@
-[project]
-name = "ar-change-detector"
-version = "0.1.0"
-description = "Change Detector for AR's open data"
-requires-python = ">=3.13"
-dependencies = []
