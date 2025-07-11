@@ -80,7 +80,6 @@ class XMLChangeDetector {
             // Generate hash
             const currentHash = crypto.createHash('sha256').update(xmlContent).digest('hex');
             const hashFile = path.join(this.dataDir, 'xml_hash.txt');
-            const xmlFile = path.join(this.dataDir, 'latest.xml');
             
             // Check for changes
             let previousHash: string | undefined;
