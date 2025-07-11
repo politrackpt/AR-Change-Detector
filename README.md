@@ -16,8 +16,8 @@
 
 ```bash
 npm install
-npm run cli                          # Monitor all resources
-npm run cli -- Deputados Sessoes    # Monitor specific resources
+npm run run                          # Monitor all resources
+npm run run -- Deputados Sessoes    # Monitor specific resources
 ```
 
 ## 📖 Usage
@@ -25,33 +25,15 @@ npm run cli -- Deputados Sessoes    # Monitor specific resources
 ### CLI Usage
 ```bash
 # Monitor all resources
-npm run cli
+npm run run
 
 # Monitor specific resources (resource names from URL paths)
-npm run cli -- Deputados Sessoes Iniciativas
+npm run run -- Deputados Sessoes Iniciativas
 
 # Examples of resource names:
 # - Deputados (from /Cidadania/Paginas/DADeputados.aspx)
 # - Sessoes (from /Cidadania/Paginas/DASessoes.aspx)
 # - Iniciativas (from /Cidadania/Paginas/DAIniciativas.aspx)
-```
-
-### Programmatic Usage
-```typescript
-import { XMLChangeDetector } from './src/change-detector';
-
-// Monitor all resources
-const detector = new XMLChangeDetector(
-    "https://www.parlamento.pt/Cidadania/paginas/dadosabertos.aspx"
-);
-
-// Monitor specific resources
-const detector = new XMLChangeDetector(
-    "https://www.parlamento.pt/Cidadania/paginas/dadosabertos.aspx",
-    ["Deputados", "Sessoes"]  // Resource names
-);
-
-const results = await detector.detectAllChanges();
 ```
 
 ## 🧪 Testing
@@ -61,9 +43,6 @@ npm test                # Run tests
 npm run test:watch      # Watch mode
 npm run test:coverage   # With coverage
 ```
-
-> [!NOTE]
-> **89.36%** statement coverage | **73.91%** branch coverage
 
 ## 🔧 API
 
@@ -98,7 +77,7 @@ Resource names are extracted from URLs with pattern `/Cidadania/Paginas/DA<name>
 7. 🔍 Compare with stored hash
 8. 💾 Update if changed
 
-> [!TIP]
+> [!NOTE]
 > Uses single browser instance for performance and only stores hashes to save disk space
 
 ## 📦 Dependencies
@@ -106,7 +85,3 @@ Resource names are extracted from URLs with pattern `/Cidadania/Paginas/DA<name>
 - `playwright` - Web automation
 - `typescript` - Type safety
 - `jest` - Testing framework
-
-## 📄 License
-
-MIT
