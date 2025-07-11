@@ -1,22 +1,13 @@
 {
-  "name": "ar-change-detector",
-  "version": "1.0.0",
-  "description": "Detects changes in AR's open data to run the retrieval engine when the resources are updated.",
-  "main": "index.js",
-  "scripts": {},
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/politrackpt/AR-Change-Detector.git"
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "run": "tsc && node dist/main.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/politrackpt/AR-Change-Detector/issues"
-  },
-  "homepage": "https://github.com/politrackpt/AR-Change-Detector#readme",
   "devDependencies": {
-    "@playwright/test": "^1.54.1",
-    "@types/node": "^24.0.13"
+    "@playwright/browser-chromium": "^1.54.1",
+    "@playwright/browser-firefox": "^1.54.1",
+    "@playwright/browser-webkit": "^1.54.1",
+    "playwright": "^1.54.1",
+    "typescript": "^5.8.3"
   }
 }
