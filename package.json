@@ -1,14 +1,19 @@
 {
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "run": "tsc && node dist/main.js"
   },
   "devDependencies": {
     "@playwright/browser-chromium": "^1.54.1",
     "@playwright/browser-firefox": "^1.54.1",
     "@playwright/browser-webkit": "^1.54.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.0.13",
+    "jest": "^30.0.4",
     "playwright": "^1.54.1",
+    "ts-jest": "^29.4.0",
     "typescript": "^5.8.3"
   }
 }
