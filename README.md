@@ -7,3 +7,9 @@ Detects changes in AR's open data to run the retrieval engine when the resources
 ```bash
 npm install
 ```
+
+## Usage
+
+```bash
+npm run run
+```

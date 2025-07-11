@@ -7,6 +7,7 @@
     "@playwright/browser-chromium": "^1.54.1",
     "@playwright/browser-firefox": "^1.54.1",
     "@playwright/browser-webkit": "^1.54.1",
+    "@types/node": "^24.0.13",
     "playwright": "^1.54.1",
     "typescript": "^5.8.3"
   }
