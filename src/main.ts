@@ -2,9 +2,23 @@ import { XMLChangeDetector } from './change-detector.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Parse command line arguments for resource names
+// Parse command line arguments
 const args = process.argv.slice(2);
-const resourceNames = args.length > 0 ? args : [];
+
+// Parse resource names and legislature filter
+let resourceNames: string[] = [];
+let legislatureFilter: string[] = [];
+
+for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--leg' && i + 1 < args.length) {
+        // Parse legislature filter: comma-separated Roman numerals
+        legislatureFilter = args[i + 1].split(',').map(leg => leg.trim().toUpperCase());
+        i++; // Skip the next argument as it's the legislature list
+    } else if (!args[i].startsWith('--')) {
+        // Regular resource name
+        resourceNames.push(args[i]);
+    }
+}
 
 // Run change detection for specified resources (or all if none specified)
 (async () => {
@@ -12,6 +26,10 @@ const resourceNames = args.length > 0 ? args : [];
         console.log(`🔍 Starting change detection for resources: ${resourceNames.join(', ')}`);
     } else {
         console.log('🔍 Starting change detection for all resources...');
+    }
+    
+    if (legislatureFilter.length > 0) {
+        console.log(`📚 Legislature filter: ${legislatureFilter.join(', ')}`);
     }
     
     // Delete existing change report at the start of each run
@@ -24,7 +42,9 @@ const resourceNames = args.length > 0 ? args : [];
 
     const detector = new XMLChangeDetector(
         "https://www.parlamento.pt/Cidadania/paginas/dadosabertos.aspx",
-        resourceNames
+        resourceNames,
+        './data',
+        legislatureFilter
     );
     
     const initialTime = performance.now();

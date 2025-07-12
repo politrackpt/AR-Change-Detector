@@ -53,11 +53,13 @@ class XMLChangeDetector {
     private baseUrl: string;
     private dataDir: string;
     private resourceNames: string[];
+    private legislatureFilter: string[];
 
-    constructor(baseUrl: string, resourceNames: string[] = [], dataDir: string = './data') {
+    constructor(baseUrl: string, resourceNames: string[] = [], dataDir: string = './data', legislatureFilter: string[] = []) {
         this.baseUrl = baseUrl;
         this.resourceNames = resourceNames;
         this.dataDir = dataDir;
+        this.legislatureFilter = legislatureFilter;
         
         // Create data directory if it doesn't exist
         if (!fs.existsSync(dataDir)) {
@@ -182,7 +184,28 @@ class XMLChangeDetector {
             };
         });
         
-        return legislatures;
+        // Filter legislatures based on provided filter if specified
+        const filteredLegislatures = this.legislatureFilter.length > 0 
+            ? legislatures.filter(legislature => {
+                // Extract Roman numeral from legislature name (e.g., "Pasta XV Legislatura" -> "XV")
+                const romanNumeralMatch = legislature.name.match(/\b([IVX]+)\b/);
+                const romanNumeral = romanNumeralMatch ? romanNumeralMatch[1] : legislature.name;
+                return this.legislatureFilter.includes(romanNumeral);
+            })
+            : legislatures;
+        
+        console.log(`Filtered to ${filteredLegislatures.length} legislatures based on filter`);
+        if (this.legislatureFilter.length > 0) {
+            console.log(`Legislature filter: ${this.legislatureFilter.join(', ')}`);
+            console.log('Filtered legislatures:');
+            for (const legislature of filteredLegislatures) {
+                const romanNumeralMatch = legislature.name.match(/\b([IVX]+)\b/);
+                const romanNumeral = romanNumeralMatch ? romanNumeralMatch[1] : legislature.name;
+                console.log(`  - ${romanNumeral}: ${legislature.name}`);
+            }
+        }
+        
+        return filteredLegislatures;
     }
 
     /**
@@ -353,7 +376,7 @@ class XMLChangeDetector {
     private async generateChangeReport(results: XMLFileChangeResult[]): Promise<void> {
         const changedResults = results.filter(r => r.changeResult.hasChanged);
         const reportPath = path.join(this.dataDir, 'change-report.json');
-        
+
         if (changedResults.length === 0) {
             console.log('📝 No changes detected - no report will be generated');
             fs.writeFileSync(reportPath, JSON.stringify({}, null, 2));

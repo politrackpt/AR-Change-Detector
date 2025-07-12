@@ -8,7 +8,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "run": "tsc && node dist/main.js",
-    "info": "tsc && node dist/main.js InformacaoBase"
+    "info": "tsc && node dist/main.js InformacaoBase",
+    "specific": "tsc && node dist/main.js Iniciativas --leg V"
   },
   "devDependencies": {
     "@playwright/browser-chromium": "^1.54.1",
