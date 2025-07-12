@@ -54,12 +54,14 @@ class XMLChangeDetector {
     private dataDir: string;
     private resourceNames: string[];
     private legislatureFilter: string[];
+    private currentLegislature: boolean = false;
 
-    constructor(baseUrl: string, resourceNames: string[] = [], dataDir: string = './data', legislatureFilter: string[] = []) {
+    constructor(baseUrl: string, resourceNames: string[] = [], dataDir: string = './data', legislatureFilter: string[] = [], currentLegislature: boolean = false) {
         this.baseUrl = baseUrl;
         this.resourceNames = resourceNames;
         this.dataDir = dataDir;
         this.legislatureFilter = legislatureFilter;
+        this.currentLegislature = currentLegislature;
         
         // Create data directory if it doesn't exist
         if (!fs.existsSync(dataDir)) {
@@ -141,7 +143,7 @@ class XMLChangeDetector {
         console.log(`Discovering legislatures for resource: ${resource.title}`);
         
         // Find all legislature folders (links containing "Pasta" and "Legislatura")
-        const legislatureElements = await page.$$eval('a', (links: any[]) => 
+        let legislatureElements: string[] = await page.$$eval('a', (links: any[]) => 
             links.filter((link: any) => {
                 const title = link.getAttribute('title') || '';
                 const href = link.getAttribute('href') || '';
@@ -156,6 +158,11 @@ class XMLChangeDetector {
             }))
         );
         
+        // If currentLegislature is true, filter to only the current legislature
+        if (this.currentLegislature) {
+            legislatureElements = legislatureElements[0] ? [legislatureElements[0]] : [];
+        }
+
         console.log(`Found ${legislatureElements.length} legislatures for resource ${resource.identifier}`);
         
         // Convert to Legislature objects

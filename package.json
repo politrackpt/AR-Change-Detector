@@ -7,6 +7,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "help": "npm run build && node dist/main.js --help",
     "run": "tsc && node dist/main.js",
     "info": "tsc && node dist/main.js InformacaoBase",
     "specific": "tsc && node dist/main.js Iniciativas --leg V"
@@ -15,6 +16,7 @@
     "@playwright/browser-chromium": "^1.54.1",
     "@playwright/browser-firefox": "^1.54.1",
     "@playwright/browser-webkit": "^1.54.1",
+    "@types/commander": "^2.12.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.13",
     "@typescript-eslint/eslint-plugin": "^8.36.0",
@@ -25,5 +27,8 @@
     "playwright": "^1.54.1",
     "ts-jest": "^29.4.0",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "commander": "^14.0.0"
   }
 }
