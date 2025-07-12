@@ -22,6 +22,7 @@ interface XMLFile {
     filename: string;
     legislatureIdentifier: string;
     resourceIdentifier: string;
+    resourceName: string;
 }
 
 interface ChangeDetectionResult {
@@ -175,7 +176,7 @@ class XMLChangeDetector {
     /**
      * Discovers all XML files for a specific legislature
      */
-    private async discoverXMLFiles(page: any, legislature: Legislature): Promise<XMLFile[]> {
+    private async discoverXMLFiles(page: any, legislature: Legislature, resourceName: string): Promise<XMLFile[]> {
         await page.goto(legislature.url, { waitUntil: 'networkidle' });
         
         console.log(`Discovering XML files for legislature: ${legislature.name}`);
@@ -213,13 +214,15 @@ class XMLChangeDetector {
             
             // Extract filename from URL or use title/text
             const filename = element.title || element.text || url.split('/').pop() || 'unknown.xml';
+            console.log(`XML File: ${filename} (${identifier})`);
             
             return {
                 identifier,
                 url,
                 filename,
                 legislatureIdentifier: legislature.identifier,
-                resourceIdentifier: legislature.resourceIdentifier
+                resourceIdentifier: legislature.resourceIdentifier,
+                resourceName
             };
         });
         
@@ -242,7 +245,15 @@ class XMLChangeDetector {
 
         // Generate hash
         const currentHash = crypto.createHash('sha256').update(content).digest('hex');
-        const hashFile = path.join(this.dataDir, `${xmlFile.identifier}_hash.txt`);
+        
+        // Create resource-specific folder
+        const resourceFolder = path.join(this.dataDir, xmlFile.resourceName);
+        if (!fs.existsSync(resourceFolder)) {
+            fs.mkdirSync(resourceFolder, { recursive: true });
+        }
+        
+        const resourceNameLength = xmlFile.resourceName.length;
+        const hashFile = path.join(resourceFolder, `${xmlFile.filename.slice(resourceNameLength)}_hash.txt`);
         
         // Check for changes
         let previousHash: string | undefined;
@@ -285,10 +296,13 @@ class XMLChangeDetector {
                     console.log(`\n📁 Processing resource: ${resource.title}`);
                     const legislatures = await this.discoverLegislatures(page, resource);
                     
+                    // Extract resource name from title for folder structure
+                    const resourceName = resource.title.replace('DA', '').replace('.aspx', '');
+                    
                     for (const legislature of legislatures) {
                         try {
                             console.log(`\n📂 Processing legislature: ${legislature.name}`);
-                            const xmlFiles = await this.discoverXMLFiles(page, legislature);
+                            const xmlFiles = await this.discoverXMLFiles(page, legislature, resourceName);
                             
                             for (const xmlFile of xmlFiles) {
                                 try {

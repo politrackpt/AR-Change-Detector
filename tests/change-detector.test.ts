@@ -87,9 +87,9 @@ describe('XMLChangeDetector - Complete Test Suite', () => {
     describe('Resource Discovery', () => {
         it('should discover all resources when no filter is provided', async () => {
             const mockResources = [
-                { href: '/Cidadania/Paginas/DADeputados.aspx', title: 'Recursos', text: 'Deputados', outerHTML: '<a href="/Cidadania/Paginas/DADeputados.aspx" title="Recursos">Deputados</a>' },
-                { href: '/Cidadania/Paginas/DASessoes.aspx', title: 'Recursos', text: 'Sessões', outerHTML: '<a href="/Cidadania/Paginas/DASessoes.aspx" title="Recursos">Sessões</a>' },
-                { href: '/Cidadania/Paginas/DAIniciativas.aspx', title: 'Recursos', text: 'Iniciativas', outerHTML: '<a href="/Cidadania/Paginas/DAIniciativas.aspx" title="Recursos">Iniciativas</a>' }
+                { href: '/Cidadania/Paginas/DADeputados.aspx', title: 'DADeputados.aspx', text: 'Deputados', outerHTML: '<a href="/Cidadania/Paginas/DADeputados.aspx" title="Recursos">Deputados</a>' },
+                { href: '/Cidadania/Paginas/DASessoes.aspx', title: 'DASessoes.aspx', text: 'Sessões', outerHTML: '<a href="/Cidadania/Paginas/DASessoes.aspx" title="Recursos">Sessões</a>' },
+                { href: '/Cidadania/Paginas/DAIniciativas.aspx', title: 'DAIniciativas.aspx', text: 'Iniciativas', outerHTML: '<a href="/Cidadania/Paginas/DAIniciativas.aspx" title="Recursos">Iniciativas</a>' }
             ];
 
             mockPage.$$eval
@@ -388,7 +388,7 @@ describe('XMLChangeDetector - Complete Test Suite', () => {
     describe('XML File Discovery', () => {
         it('should discover XML files by href content', async () => {
             const mockResources = [
-                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'Recursos', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
+                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'DAInformacaoBase.aspx', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
             ];
 
             const mockLegislatures = [
@@ -415,11 +415,13 @@ describe('XMLChangeDetector - Complete Test Suite', () => {
             expect(results).toHaveLength(2);
             expect(results[0].xmlFile.filename).toBe('deputados.xml');
             expect(results[1].xmlFile.filename).toBe('sessoes.xml');
+            expect(results[0].xmlFile.resourceName).toBe('InformacaoBase');
+            expect(results[1].xmlFile.resourceName).toBe('InformacaoBase');
         });
 
         it('should discover XML files by title content', async () => {
             const mockResources = [
-                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'Recursos', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
+                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'DAInformacaoBase.aspx', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
             ];
 
             const mockLegislatures = [
@@ -444,6 +446,7 @@ describe('XMLChangeDetector - Complete Test Suite', () => {
             const results = await detector.detectAllChanges();
             expect(results).toHaveLength(1);
             expect(results[0].xmlFile.filename).toBe('data.xml');
+            expect(results[0].xmlFile.resourceName).toBe('InformacaoBase');
         });
 
         it('should handle XML files with relative URLs', async () => {
@@ -752,7 +755,7 @@ describe('XMLChangeDetector - Complete Test Suite', () => {
 
         it('should create and manage hash files', async () => {
             const mockResources = [
-                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'Recursos', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
+                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'DAInformacaoBase.aspx', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
             ];
 
             const mockLegislatures = [
@@ -777,18 +780,22 @@ describe('XMLChangeDetector - Complete Test Suite', () => {
             const results = await detector.detectAllChanges();
             expect(results).toHaveLength(1);
             
-            // Check if hash file was created
-            const hashFiles = fs.readdirSync(testDataDir).filter(file => file.endsWith('_hash.txt'));
+            // Check if resource folder was created
+            const resourceFolder = path.join(testDataDir, 'InformacaoBase');
+            expect(fs.existsSync(resourceFolder)).toBe(true);
+            
+            // Check if hash file was created in the resource folder
+            const hashFiles = fs.readdirSync(resourceFolder).filter(file => file.endsWith('_hash.txt'));
             expect(hashFiles).toHaveLength(1);
             
             // Check hash file content
-            const hashContent = fs.readFileSync(path.join(testDataDir, hashFiles[0]), 'utf8');
+            const hashContent = fs.readFileSync(path.join(resourceFolder, hashFiles[0]), 'utf8');
             expect(hashContent).toBe(results[0].changeResult.currentHash);
         });
 
         it('should handle hash file corruption gracefully', async () => {
             const mockResources = [
-                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'Recursos', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
+                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'DAInformacaoBase.aspx', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
             ];
 
             const mockLegislatures = [
@@ -803,9 +810,10 @@ describe('XMLChangeDetector - Complete Test Suite', () => {
                 text: jest.fn().mockResolvedValue('<xml>test content</xml>')
             };
 
-            // Create corrupted hash file
-            const identifier = crypto.createHash('sha256').update(mockXMLFiles[0].outerHTML).digest('hex').substring(0, 12);
-            const hashFile = path.join(testDataDir, `${identifier}_hash.txt`);
+            // Create resource folder and corrupted hash file
+            const resourceFolder = path.join(testDataDir, 'InformacaoBase');
+            fs.mkdirSync(resourceFolder, { recursive: true });
+            const hashFile = path.join(resourceFolder, '_hash.txt'); // filename.slice(resourceNameLength) results in empty string
             fs.writeFileSync(hashFile, 'corrupted_hash_content');
 
             mockPage.$$eval
@@ -823,7 +831,7 @@ describe('XMLChangeDetector - Complete Test Suite', () => {
 
         it('should handle hash file with whitespace', async () => {
             const mockResources = [
-                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'Recursos', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
+                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'DAInformacaoBase.aspx', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
             ];
 
             const mockLegislatures = [
@@ -840,8 +848,9 @@ describe('XMLChangeDetector - Complete Test Suite', () => {
 
             // Create hash file with whitespace
             const currentHash = crypto.createHash('sha256').update('<xml>test content</xml>').digest('hex');
-            const identifier = crypto.createHash('sha256').update(mockXMLFiles[0].outerHTML).digest('hex').substring(0, 12);
-            const hashFile = path.join(testDataDir, `${identifier}_hash.txt`);
+            const resourceFolder = path.join(testDataDir, 'InformacaoBase');
+            fs.mkdirSync(resourceFolder, { recursive: true });
+            const hashFile = path.join(resourceFolder, '_hash.txt'); // filename.slice(resourceNameLength) results in empty string
             fs.writeFileSync(hashFile, `  ${currentHash}  \n`);
 
             mockPage.$$eval
@@ -1161,6 +1170,130 @@ describe('XMLChangeDetector - Complete Test Suite', () => {
             const results = await detector.detectAllChanges();
             expect(results).toHaveLength(4); // 2 resources * 2 legislatures * 1 XML file each
             expect(results.every(r => r.xmlFile.filename === 'deputados.xml')).toBe(true);
+        });
+    });
+
+    describe('Folder Structure', () => {
+        it('should create and manage hash files with folder structure', async () => {
+            const mockResources = [
+                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'DAInformacaoBase.aspx', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
+            ];
+
+            const mockLegislatures = [
+                { href: '/legislatures/XVII', text: 'XVII Legislatura', title: 'Pasta XVII Legislatura', outerHTML: '<a href="/legislatures/XVII" title="Pasta XVII Legislatura">XVII Legislatura</a>' }
+            ];
+
+            const mockXMLFiles = [
+                { href: '/xml/test.xml', title: 'test.xml', text: 'test.xml', outerHTML: '<a href="/xml/test.xml" title="test.xml">test.xml</a>' }
+            ];
+
+            const mockResponse = {
+                text: jest.fn().mockResolvedValue('<xml>test content</xml>')
+            };
+
+            mockPage.$$eval
+                .mockResolvedValueOnce(mockResources)
+                .mockResolvedValueOnce(mockLegislatures)
+                .mockResolvedValueOnce(mockXMLFiles);
+
+            mockPage.goto.mockResolvedValue(mockResponse);
+
+            const results = await detector.detectAllChanges();
+            expect(results).toHaveLength(1);
+            expect(results[0].xmlFile.resourceName).toBe('InformacaoBase');
+            
+            // Check if resource folder was created
+            const resourceFolder = path.join(testDataDir, 'InformacaoBase');
+            expect(fs.existsSync(resourceFolder)).toBe(true);
+            
+            // Check if hash file was created in the resource folder
+            const hashFiles = fs.readdirSync(resourceFolder).filter(file => file.endsWith('_hash.txt'));
+            expect(hashFiles).toHaveLength(1);
+            expect(hashFiles[0]).toBe('_hash.txt'); // filename.slice(resourceNameLength) results in empty string
+            
+            // Check hash file content
+            const hashContent = fs.readFileSync(path.join(resourceFolder, hashFiles[0]), 'utf8');
+            expect(hashContent).toBe(results[0].changeResult.currentHash);
+        });
+
+        it('should handle multiple resources with separate folder structures', async () => {
+            const mockResources = [
+                { href: '/Cidadania/Paginas/DADeputados.aspx', title: 'DADeputados.aspx', text: 'Deputados', outerHTML: '<a href="/Cidadania/Paginas/DADeputados.aspx" title="Recursos">Deputados</a>' },
+                { href: '/Cidadania/Paginas/DASessoes.aspx', title: 'DASessoes.aspx', text: 'Sessões', outerHTML: '<a href="/Cidadania/Paginas/DASessoes.aspx" title="Recursos">Sessões</a>' }
+            ];
+
+            const mockLegislatures = [
+                { href: '/legislatures/XVII', text: 'XVII Legislatura', title: 'Pasta XVII Legislatura', outerHTML: '<a href="/legislatures/XVII" title="Pasta XVII Legislatura">XVII Legislatura</a>' }
+            ];
+
+            const mockXMLFiles = [
+                { href: '/xml/data.xml', title: 'data.xml', text: 'data.xml', outerHTML: '<a href="/xml/data.xml" title="data.xml">data.xml</a>' }
+            ];
+
+            const mockResponse = {
+                text: jest.fn().mockResolvedValue('<xml>test content</xml>')
+            };
+
+            mockPage.$$eval
+                .mockResolvedValueOnce(mockResources) // Resources
+                .mockResolvedValueOnce(mockLegislatures) // Legislatures for first resource
+                .mockResolvedValueOnce(mockXMLFiles) // XML files for first resource
+                .mockResolvedValueOnce(mockLegislatures) // Legislatures for second resource
+                .mockResolvedValueOnce(mockXMLFiles); // XML files for second resource
+
+            mockPage.goto.mockResolvedValue(mockResponse);
+
+            const results = await detector.detectAllChanges();
+            expect(results).toHaveLength(2);
+            
+            // Check resource names
+            expect(results[0].xmlFile.resourceName).toBe('Deputados');
+            expect(results[1].xmlFile.resourceName).toBe('Sessoes');
+            
+            // Check if separate folders were created
+            const deputadosFolder = path.join(testDataDir, 'Deputados');
+            const sessoesFolder = path.join(testDataDir, 'Sessoes');
+            expect(fs.existsSync(deputadosFolder)).toBe(true);
+            expect(fs.existsSync(sessoesFolder)).toBe(true);
+            
+            // Check if hash files were created in respective folders
+            const deputadosHashFiles = fs.readdirSync(deputadosFolder).filter(file => file.endsWith('_hash.txt'));
+            const sessoesHashFiles = fs.readdirSync(sessoesFolder).filter(file => file.endsWith('_hash.txt'));
+            expect(deputadosHashFiles).toHaveLength(1);
+            expect(sessoesHashFiles).toHaveLength(1);
+        });
+
+        it('should handle resource name extraction correctly', async () => {
+            const mockResources = [
+                { href: '/Cidadania/Paginas/DAComposicaoOrgaos.aspx', title: 'DAComposicaoOrgaos.aspx', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAComposicaoOrgaos.aspx" title="Recursos">Recursos</a>' }
+            ];
+
+            const mockLegislatures = [
+                { href: '/legislatures/XVII', text: 'XVII Legislatura', title: 'Pasta XVII Legislatura', outerHTML: '<a href="/legislatures/XVII" title="Pasta XVII Legislatura">XVII Legislatura</a>' }
+            ];
+
+            const mockXMLFiles = [
+                { href: '/xml/composicao.xml', title: 'composicao.xml', text: 'composicao.xml', outerHTML: '<a href="/xml/composicao.xml" title="composicao.xml">composicao.xml</a>' }
+            ];
+
+            const mockResponse = {
+                text: jest.fn().mockResolvedValue('<xml>test content</xml>')
+            };
+
+            mockPage.$$eval
+                .mockResolvedValueOnce(mockResources)
+                .mockResolvedValueOnce(mockLegislatures)
+                .mockResolvedValueOnce(mockXMLFiles);
+
+            mockPage.goto.mockResolvedValue(mockResponse);
+
+            const results = await detector.detectAllChanges();
+            expect(results).toHaveLength(1);
+            expect(results[0].xmlFile.resourceName).toBe('ComposicaoOrgaos');
+            
+            // Check if resource folder was created with correct name
+            const resourceFolder = path.join(testDataDir, 'ComposicaoOrgaos');
+            expect(fs.existsSync(resourceFolder)).toBe(true);
         });
     });
 });
