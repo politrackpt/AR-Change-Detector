@@ -6,8 +6,7 @@ import * as path from 'path';
 interface Resource {
     identifier: string;
     url: string;
-    title: string;
-    text: string;
+    title: string
 }
 
 interface Legislature {
@@ -65,8 +64,7 @@ class XMLChangeDetector {
         const resourceElements = await page.$$eval('a[title="Recursos"]', (links: any[]) => 
             links.map((link: any) => ({
                 href: link.getAttribute('href') || '',
-                title: link.getAttribute('title') || '',
-                text: link.textContent?.trim() || '',
+                title: link.getAttribute('href').split("/")[3] || '',
                 outerHTML: link.outerHTML
             }))
         );
@@ -88,11 +86,11 @@ class XMLChangeDetector {
                 url = new URL(url, this.baseUrl).toString();
             }
             
+            console.log(`Title: ${element.title}`);
             return {
                 identifier,
                 url,
-                title: element.title,
-                text: element.text
+                title: element.title
             };
         });
         
@@ -111,6 +109,10 @@ class XMLChangeDetector {
             : resources;
         
         console.log(`Filtered to ${filteredResources.length} resources based on provided names`);
+        console.log('Resources to be retrieved:');
+        for (const resource of filteredResources) {
+            console.log(`  - ${resource.title}`);
+        }
         
         return filteredResources;
     }
@@ -121,7 +123,7 @@ class XMLChangeDetector {
     private async discoverLegislatures(page: any, resource: Resource): Promise<Legislature[]> {
         await page.goto(resource.url, { waitUntil: 'networkidle' });
         
-        console.log(`Discovering legislatures for resource: ${resource.text}`);
+        console.log(`Discovering legislatures for resource: ${resource.title}`);
         
         // Find all legislature folders (links containing "Pasta" and "Legislatura")
         const legislatureElements = await page.$$eval('a', (links: any[]) => 
@@ -140,11 +142,6 @@ class XMLChangeDetector {
         );
         
         console.log(`Found ${legislatureElements.length} legislatures for resource ${resource.identifier}`);
-        
-        // Log each legislature for debugging
-        legislatureElements.forEach((element: any, index: number) => {
-            console.log(`  ${index + 1}. ${element.title || element.text} (${element.href})`);
-        });
         
         // Convert to Legislature objects
         const legislatures: Legislature[] = legislatureElements.map((element: any) => {
@@ -285,7 +282,7 @@ class XMLChangeDetector {
             
             for (const resource of resources) {
                 try {
-                    console.log(`\n📁 Processing resource: ${resource.text}`);
+                    console.log(`\n📁 Processing resource: ${resource.title}`);
                     const legislatures = await this.discoverLegislatures(page, resource);
                     
                     for (const legislature of legislatures) {
@@ -309,7 +306,7 @@ class XMLChangeDetector {
                         }
                     }
                 } catch (error) {
-                    console.error(`Error checking resource ${resource.text}:`, error);
+                    console.error(`Error checking resource ${resource.title}:`, error);
                 }
             }
             

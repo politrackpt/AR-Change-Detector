@@ -26,14 +26,6 @@ const resourceNames = args.length > 0 ? args : [];
         if (changedResources.length > 0) {
             console.log(`🔄 Found ${changedResources.length} changed XML files:`);
             
-            changedResources.forEach(result => {
-                console.log(`  - ${result.xmlFile.filename} (${result.xmlFile.identifier})`);
-                console.log(`    URL: ${result.xmlFile.url}`);
-                console.log(`    Hash: ${result.changeResult.currentHash.substring(0, 12)}...`);
-                console.log(`    Legislature: ${result.xmlFile.legislatureIdentifier}`);
-                console.log(`    Resource: ${result.xmlFile.resourceIdentifier}`);
-            });
-            
             console.log('📧 Sending notifications...');
             // Add your notification logic here (email, webhook, etc.)
         } else {
