@@ -1,4 +1,6 @@
 import { XMLChangeDetector } from './change-detector.js';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Parse command line arguments for resource names
 const args = process.argv.slice(2);
@@ -12,11 +14,20 @@ const resourceNames = args.length > 0 ? args : [];
         console.log('🔍 Starting change detection for all resources...');
     }
     
+    // Delete existing change report at the start of each run
+    const reportPath = path.join("./data", 'change-report.json');
+    if (fs.existsSync(reportPath)) {
+        fs.unlinkSync(reportPath);
+        console.log('🗑️ Cleared previous change report');
+    }
+    
+
     const detector = new XMLChangeDetector(
         "https://www.parlamento.pt/Cidadania/paginas/dadosabertos.aspx",
         resourceNames
     );
     
+    const initialTime = performance.now();
     try {
         // Detect changes for specified resources
         const results = await detector.detectAllChanges();
@@ -31,10 +42,9 @@ const resourceNames = args.length > 0 ? args : [];
         } else {
             console.log('✅ No changes detected in any XML files.');
         }
-        
-        console.log(`📊 Total XML files checked: ${results.length}`);
-        
     } catch (error) {
         console.error('❌ Monitoring error:', error);
+    } finally {
+        console.log(`⏱️ Change detection completed in ${((performance.now() - initialTime) / 1000).toFixed(1)} s`);
     }
 })();

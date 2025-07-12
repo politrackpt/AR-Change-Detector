@@ -23,6 +23,11 @@ interface XMLFile {
     legislatureIdentifier: string;
     resourceIdentifier: string;
     resourceName: string;
+    // Store additional info for report generation
+    resourceTitle: string;
+    resourceUrl: string;
+    legislatureName: string;
+    legislatureUrl: string;
 }
 
 interface ChangeDetectionResult {
@@ -35,6 +40,13 @@ interface ChangeDetectionResult {
 interface XMLFileChangeResult {
     xmlFile: XMLFile;
     changeResult: ChangeDetectionResult;
+}
+
+// Simplified change report format: { "ResourceName": { "XVII": "https://url-to-xml", "XII": "https://url-to-xml" } }
+interface ChangeReport {
+    [resourceName: string]: {
+        [legislatureRomanNumeral: string]: string;
+    };
 }
 
 class XMLChangeDetector {
@@ -176,10 +188,8 @@ class XMLChangeDetector {
     /**
      * Discovers all XML files for a specific legislature
      */
-    private async discoverXMLFiles(page: any, legislature: Legislature, resourceName: string): Promise<XMLFile[]> {
+    private async discoverXMLFiles(page: any, legislature: Legislature, resourceName: string, resource: Resource): Promise<XMLFile[]> {
         await page.goto(legislature.url, { waitUntil: 'networkidle' });
-        
-        console.log(`Discovering XML files for legislature: ${legislature.name}`);
         
         // Find all XML file links
         const xmlElements = await page.$$eval('a', (links: any[]) => 
@@ -194,8 +204,6 @@ class XMLChangeDetector {
                 outerHTML: link.outerHTML
             }))
         );
-        
-        console.log(`Found ${xmlElements.length} XML files for legislature ${legislature.identifier}`);
         
         // Convert to XMLFile objects
         const xmlFiles: XMLFile[] = xmlElements.map((element: any) => {
@@ -214,7 +222,7 @@ class XMLChangeDetector {
             
             // Extract filename from URL or use title/text
             const filename = element.title || element.text || url.split('/').pop() || 'unknown.xml';
-            console.log(`XML File: ${filename} (${identifier})`);
+            console.log(`XML File: ${filename}`);
             
             return {
                 identifier,
@@ -222,7 +230,12 @@ class XMLChangeDetector {
                 filename,
                 legislatureIdentifier: legislature.identifier,
                 resourceIdentifier: legislature.resourceIdentifier,
-                resourceName
+                resourceName,
+                // Store additional info for report generation
+                resourceTitle: resource.title,
+                resourceUrl: resource.url,
+                legislatureName: legislature.name,
+                legislatureUrl: legislature.url
             };
         });
         
@@ -233,7 +246,7 @@ class XMLChangeDetector {
      * Detects changes for a specific XML file
      */
     private async detectXMLFileChanges(page: any, xmlFile: XMLFile): Promise<ChangeDetectionResult> {
-        console.log(`Checking XML file: ${xmlFile.filename} (${xmlFile.identifier})`);
+        console.log(`Checking XML file: ${xmlFile.filename}`);
         
         // Download XML content
         const response = await page.goto(xmlFile.url);
@@ -302,7 +315,7 @@ class XMLChangeDetector {
                     for (const legislature of legislatures) {
                         try {
                             console.log(`\n📂 Processing legislature: ${legislature.name}`);
-                            const xmlFiles = await this.discoverXMLFiles(page, legislature, resourceName);
+                            const xmlFiles = await this.discoverXMLFiles(page, legislature, resourceName, resource);
                             
                             for (const xmlFile of xmlFiles) {
                                 try {
@@ -324,13 +337,54 @@ class XMLChangeDetector {
                 }
             }
             
+            // Generate change report for files that actually changed
+            await this.generateChangeReport(results);
+            
             return results;
             
         } finally {
             await browser.close();
         }
     }
+
+    /**
+     * Generates a simplified change report showing legislature Roman numerals and their XML URLs
+     */
+    private async generateChangeReport(results: XMLFileChangeResult[]): Promise<void> {
+        const changedResults = results.filter(r => r.changeResult.hasChanged);
+        const reportPath = path.join(this.dataDir, 'change-report.json');
+        
+        if (changedResults.length === 0) {
+            console.log('📝 No changes detected - no report will be generated');
+            fs.writeFileSync(reportPath, JSON.stringify({}, null, 2));
+            return;
+        }
+
+        // Group changes by resource name and legislature Roman numeral
+        const changeReport: ChangeReport = {};
+        
+        for (const result of changedResults) {
+            const resourceName = result.xmlFile.resourceName;
+            const legislatureName = result.xmlFile.legislatureName;
+            const xmlUrl = result.xmlFile.url;
+            
+            // Extract Roman numeral from legislature name (e.g., "Pasta XV Legislatura" -> "XV")
+            const romanNumeralMatch = legislatureName.match(/\b([IVX]+)\b/);
+            const romanNumeral = romanNumeralMatch ? romanNumeralMatch[1] : legislatureName;
+            
+            // Initialize resource object if it doesn't exist
+            if (!changeReport[resourceName]) {
+                changeReport[resourceName] = {};
+            }
+            
+            // Store the XML URL for this legislature (will overwrite if multiple files for same legislature)
+            changeReport[resourceName][romanNumeral] = xmlUrl;
+        }
+
+        // Save the change report
+        fs.writeFileSync(reportPath, JSON.stringify(changeReport, null, 2));
+    }
 }
 
 // Export the class and interfaces for external use
-export { XMLChangeDetector, ChangeDetectionResult, Resource, Legislature, XMLFile, XMLFileChangeResult };
+export { XMLChangeDetector, ChangeDetectionResult, Resource, Legislature, XMLFile, XMLFileChangeResult, ChangeReport };
