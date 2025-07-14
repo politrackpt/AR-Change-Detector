@@ -402,13 +402,16 @@ class XMLChangeDetector {
             const romanNumeralMatch = legislatureName.match(/\b([IVX]+)\b/);
             const romanNumeral = romanNumeralMatch ? romanNumeralMatch[1] : legislatureName;
             
+            // Use lowercase resource name for the key
+            const resourceKey = resourceName.toLowerCase();
+            
             // Initialize resource object if it doesn't exist
-            if (!changeReport[resourceName]) {
-                changeReport[resourceName] = {};
+            if (!changeReport[resourceKey]) {
+                changeReport[resourceKey] = {};
             }
             
             // Store the XML URL for this legislature (will overwrite if multiple files for same legislature)
-            changeReport[resourceName][romanNumeral] = xmlUrl;
+            changeReport[resourceKey][romanNumeral] = xmlUrl;
         }
 
         // Save the change report

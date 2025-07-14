@@ -1296,4 +1296,51 @@ describe('XMLChangeDetector - Complete Test Suite', () => {
             expect(fs.existsSync(resourceFolder)).toBe(true);
         });
     });
+
+    describe('Change Report', () => {
+        it('should generate change report with lowercase resource names as keys', async () => {
+            const mockResources = [
+                { href: '/Cidadania/Paginas/DAInformacaoBase.aspx', title: 'DAInformacaoBase.aspx', text: 'Recursos', outerHTML: '<a href="/Cidadania/Paginas/DAInformacaoBase.aspx" title="Recursos">Recursos</a>' }
+            ];
+
+            const mockLegislatures = [
+                { href: '/legislatures/XVII', text: 'XVII Legislatura', title: 'Pasta XVII Legislatura', outerHTML: '<a href="/legislatures/XVII" title="Pasta XVII Legislatura">XVII Legislatura</a>' }
+            ];
+
+            const mockXMLFiles = [
+                { href: '/xml/test.xml', title: 'test.xml', text: 'test.xml', outerHTML: '<a href="/xml/test.xml" title="test.xml">test.xml</a>' }
+            ];
+
+            const mockResponse = {
+                text: jest.fn().mockResolvedValue('<xml>test content</xml>')
+            };
+
+            mockPage.$$eval
+                .mockResolvedValueOnce(mockResources)
+                .mockResolvedValueOnce(mockLegislatures)
+                .mockResolvedValueOnce(mockXMLFiles);
+
+            mockPage.goto.mockResolvedValue(mockResponse);
+
+            const results = await detector.detectAllChanges();
+            expect(results).toHaveLength(1);
+            expect(results[0].changeResult.hasChanged).toBe(true);
+            expect(results[0].xmlFile.resourceName).toBe('InformacaoBase'); // Original resourceName remains unchanged
+            
+            // Check the change report file uses lowercase keys
+            const changeReportPath = path.join(testDataDir, 'change-report.json');
+            expect(fs.existsSync(changeReportPath)).toBe(true);
+            
+            const changeReportContent = fs.readFileSync(changeReportPath, 'utf8');
+            const changeReport = JSON.parse(changeReportContent);
+            
+            // Should have lowercase key "informacaobase" instead of "InformacaoBase"
+            expect(changeReport).toHaveProperty('informacaobase');
+            expect(changeReport.informacaobase).toHaveProperty('XVII');
+            expect(changeReport.informacaobase.XVII).toBe('https://www.parlamento.pt/xml/test.xml');
+            
+            // Should NOT have the original capitalized key
+            expect(changeReport).not.toHaveProperty('InformacaoBase');
+        });
+    });
 });
