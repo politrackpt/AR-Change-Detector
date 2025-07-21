@@ -62,7 +62,7 @@ jobs:
       if: steps.check-changes.outputs.changes_detected == 'true'
       uses: actions/github-script@v7
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ secrets.CROSS_REPO_PAT }}
         script: |
           const fs = require('fs');
           
