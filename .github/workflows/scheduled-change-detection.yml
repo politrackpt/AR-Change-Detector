@@ -1,15 +1,15 @@
 name: 🔍 Scheduled Change Detection
 
 on:
+  push:
+    branches: [test-new-workflow]
   schedule:
     # 8 AM Lisbon Time (UTC+1 in winter, UTC+2 in summer)
-    - cron: '0 7 * * *'   # 8 AM Lisbon (winter time)
-    - cron: '0 6 * * *'   # 8 AM Lisbon (summer time) 
+    - cron: '0 7 * * *'   # Winter
+    - cron: '0 6 * * *'   # Summer
     # 4 PM Lisbon Time
-    - cron: '0 15 * * *'  # 4 PM Lisbon (winter time)
-    - cron: '0 14 * * *'  # 4 PM Lisbon (summer time)
-  
-  # Allow manual triggering for testing
+    - cron: '0 15 * * *'  # Winter
+    - cron: '0 14 * * *'  # Summer
   workflow_dispatch:
 
 env:
@@ -19,36 +19,34 @@ env:
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: 🔧 Checkout Repository
       uses: actions/checkout@v4
-      
+
     - name: 🟢 Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-        
+
     - name: 📦 Install Dependencies
       run: npm ci
-      
+
     - name: 🎭 Install Playwright Browsers
       run: npx playwright install firefox
-      
+
     - name: 🔍 Run Change Detection
       run: npm run default
       continue-on-error: true
-      
+
     - name: 📋 Check if Changes Detected
       id: check-changes
       run: |
         if [ -f "data/change-report.json" ]; then
-          # Check if file is not empty and not just {}
           if [ -s "data/change-report.json" ] && ! grep -q '^{}$' "data/change-report.json"; then
             echo "changes_detected=true" >> $GITHUB_OUTPUT
             echo "📊 Changes detected - triggering Open-Data-Retrieval"
-            cat data/change-report.json
           else
             echo "changes_detected=false" >> $GITHUB_OUTPUT
             echo "✅ No changes detected - skipping trigger"
@@ -57,28 +55,25 @@ jobs:
           echo "changes_detected=false" >> $GITHUB_OUTPUT
           echo "❌ No change-report.json file generated"
         fi
-        
+
     - name: 🚀 Trigger Open-Data-Retrieval
       if: steps.check-changes.outputs.changes_detected == 'true'
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{ secrets.CROSS_REPO_PAT }}
-        script: |
-          const fs = require('fs');
-          
-          // Read the change report
-          const changeReport = JSON.parse(fs.readFileSync('data/change-report.json', 'utf8'));
-          
-          // Trigger the other repository's workflow
-          await github.rest.repos.createDispatchEvent({
-            owner: 'politrackpt',
-            repo: 'Open-Data-Retrieval',
-            event_type: 'ar-changes-detected',
-            client_payload: {
-              changes: changeReport,
-              source_repo: context.repo.full_name,
-              source_run_id: context.runId
-            }
-          });
-          
-          console.log('✅ Successfully triggered Open-Data-Retrieval workflow');
+      run: |
+        ENCODED=$(base64 -w 0 data/change-report.json)
+        curl -X POST \
+          -H "Authorization: token ${{ secrets.CROSS_REPO_PAT }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/politrackpt/Open-Data-Retrieval/dispatches \
+          -d @- <<EOF
+        {
+          "event_type": "ar-changes-detected",
+          "client_payload": {
+            "changes": "$ENCODED",
+            "source_repo": "${{ github.repository }}",
+            "source_run_id": "${{ github.run_id }}"
+          }
+        }
+        EOF
+
+    - name: ✅ Finished
+      run: echo "Workflow completed"
