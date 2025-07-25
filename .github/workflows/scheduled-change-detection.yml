@@ -1,8 +1,6 @@
 name: 🔍 Scheduled Change Detection
 
 on:
-  push:
-    branches: [main]
   schedule:
     # 8 AM Lisbon Time (UTC+1 in winter, UTC+2 in summer)
     - cron: '0 7 * * *'   # Winter
