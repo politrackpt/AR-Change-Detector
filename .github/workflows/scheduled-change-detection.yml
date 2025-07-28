@@ -2,12 +2,8 @@ name: 🔍 Scheduled Change Detection
 
 on:
   schedule:
-    # 8 AM Lisbon Time (UTC+1 in winter, UTC+2 in summer)
-    - cron: '0 7 * * *'   # Winter
-    - cron: '0 6 * * *'   # Summer
-    # 4 PM Lisbon Time
-    - cron: '0 15 * * *'  # Winter
-    - cron: '0 14 * * *'  # Summer
+    - cron: '0 6 * * *'
+    - cron: '0 14 * * *'
   workflow_dispatch:
 
 env:
