@@ -73,7 +73,7 @@ class XMLChangeDetector {
      * Discovers all resources on the page
      */
     private async discoverResources(page: any): Promise<Resource[]> {
-        await page.goto(this.baseUrl, { waitUntil: 'networkidle' });
+        await page.goto(this.baseUrl, { waitUntil: 'networkidle', timeout: 120000 });
         
         console.log('Discovering resources on:', await page.title());
         
@@ -138,7 +138,7 @@ class XMLChangeDetector {
      * Discovers all legislatures for a specific resource
      */
     private async discoverLegislatures(page: any, resource: Resource): Promise<Legislature[]> {
-        await page.goto(resource.url, { waitUntil: 'networkidle' });
+        await page.goto(resource.url, { waitUntil: 'networkidle', timeout: 120000 });
         
         console.log(`Discovering legislatures for resource: ${resource.title}`);
         
@@ -219,7 +219,7 @@ class XMLChangeDetector {
      * Discovers all XML files for a specific legislature
      */
     private async discoverXMLFiles(page: any, legislature: Legislature, resourceName: string, resource: Resource): Promise<XMLFile[]> {
-        await page.goto(legislature.url, { waitUntil: 'networkidle' });
+        await page.goto(legislature.url, { waitUntil: 'networkidle', timeout: 120000 });
         
         // Find all XML file links
         const xmlElements = await page.$$eval('a', (links: any[]) => 
@@ -279,7 +279,7 @@ class XMLChangeDetector {
         console.log(`Checking XML file: ${xmlFile.filename}`);
         
         // Download XML content
-        const response = await page.goto(xmlFile.url);
+        const response = await page.goto(xmlFile.url, { timeout: 120000 });
         const content = await response?.text();
         
         if (!content) {
